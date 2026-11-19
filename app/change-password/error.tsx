@@ -8,7 +8,7 @@ export default function ChangePasswordError({ reset }: { error: Error; reset: ()
       <p role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
         Ocurrió un error inesperado al cambiar la contraseña. Inténtalo de nuevo.
       </p>
-      <Button onClick={reset}>Reintentar</Button>
+      <Button type="button" onClick={reset}>Reintentar</Button>
     </main>
   );
 }

@@ -43,11 +43,15 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  type = "submit",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
+      // Base UI usa type="button" por defecto, lo que impedía enviar los formularios del proyecto.
+      // Aquí el valor por defecto es "submit"; los botones que no deban enviar pasan type="button".
+      type={type}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
