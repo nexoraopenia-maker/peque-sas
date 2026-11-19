@@ -1,0 +1,10 @@
+{
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "crons": [
+    { "path": "/api/cron/billing", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/reservation-reminders", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/marketing", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/sunat", "schedule": "*/15 * * * *" }
+  ]
+}

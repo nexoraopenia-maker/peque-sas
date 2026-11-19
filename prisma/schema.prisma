@@ -1,0 +1,1507 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  SUPERADMIN
+  OWNER
+  ADMIN
+  RECEPTION
+  TEACHER
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DEMO
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUST
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  YAPE_PLIN
+  TARJETA
+  TRANSFERENCIA
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum ExpenseCategory {
+  OPERATING_SUPPLIES
+  PERSONNEL
+  RENT_UTILITIES
+  MARKETING_MISC
+}
+
+enum ExpenseSource {
+  CASH_DRAWER
+  CASH_OTHER
+  YAPE_PLIN
+  CARD
+  TRANSFER
+}
+
+enum SaleKind {
+  RESERVATION_PAYMENT
+  PLAYGROUND
+  PREPAID_PACKAGE
+  DAYCARE_FEE
+  POS
+}
+
+enum SaleItemKind {
+  COUPON_DISCOUNT
+  POINTS_DISCOUNT
+  RESERVATION_PAYMENT
+  BASE_RATE
+  EXTRA_MINUTES
+  PREPAID_CREDIT
+  PRODUCT
+  PREPAID_PACKAGE
+  MONTHLY_FEE
+}
+
+enum PrepaidLedgerType {
+  PURCHASE
+  CONSUME
+  ADJUST
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  VOID
+}
+
+enum ReservationService {
+  LUDOTECA
+  CUMPLEANOS
+  GUARDERIA
+  EVENTO
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED_CENTS
+}
+
+enum LoyaltyEntryType {
+  EARN
+  REDEEM
+  EXPIRE
+  ADJUST
+}
+
+enum CampaignSegment {
+  BIRTHDAY_MONTH
+  INACTIVE
+  PREPAID_LOW
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum DaycareLogKind {
+  MEAL
+  NAP
+  DIAPER
+  HYGIENE
+  MOOD
+  NOTE
+}
+
+enum IncidentType {
+  FALL
+  ALLERGY
+  BEHAVIOR
+  HEALTH
+  OTHER
+}
+
+enum PlaygroundSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum BusinessModule {
+  PLAYGROUND
+  DAYCARE
+  WHATSAPP
+  SUNAT
+}
+
+model Plan {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  modules            Json     @default("[]")
+  maxUsers           Int      @default(3)
+  maxLocations       Int      @default(1)
+  storageMb          Int      @default(500)
+  whatsappEnabled    Boolean  @default(false)
+  automationsEnabled Boolean  @default(false)
+  reportsEnabled     Boolean  @default(true)
+  isDemo             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  botMonthlyReplies  Int      @default(300)
+  // Precio mensual en céntimos (0 = sin cobro: demos y planes gratuitos) y duración del periodo facturado
+  priceCents         Int      @default(0)
+  billingPeriodDays  Int      @default(30)
+  tenants            Tenant[]
+}
+
+model Tenant {
+  id            String       @id @default(cuid())
+  name          String
+  businessType  String
+  status        TenantStatus @default(ACTIVE)
+  planId        String
+  plan          Plan         @relation(fields: [planId], references: [id])
+  modules       Json         @default("[]")
+  demoExpiresAt DateTime?
+  // Suspensión (SuperAdmin): fecha y motivo; un trigger exige suspendedAt si y solo si status = SUSPENDED
+  suspendedAt     DateTime?
+  suspendedReason String?
+  // SuperAdmin que aprovisionó el establecimiento (demos)
+  provisionedById String?
+  // Quién suspendió: ADMIN (SuperAdmin, bloqueo total) o BILLING (impago: el propietario solo accede a /billing para pagar)
+  suspensionSource String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  users                  User[]
+  guardians              Guardian[]
+  children               Child[]
+  childGuardians         ChildGuardian[]
+  auditLogs              AuditLog[]
+  products               Product[]
+  stockMovements         StockMovement[]
+  playgroundRates        PlaygroundRate[]
+  playgroundSessions     PlaygroundSession[]
+  authorizedPickups      AuthorizedPickup[]
+  playgroundIncidents    PlaygroundIncident[]
+  enrollments            Enrollment[]
+  daycareAttendances     DaycareAttendance[]
+  daycareLogs            DaycareLog[]
+  daycareIncidents       DaycareIncident[]
+  daycareNotifications   DaycareNotification[]
+  daycareProfiles        DaycareProfile[]
+  playgroundCapacity     Int                        @default(30)
+  cashSessions           CashRegisterSession[]
+  sales                  Sale[]
+  saleItems              SaleItem[]
+  prepaidPackages        PrepaidPackage[]
+  prepaidLedger          PrepaidLedger[]
+  daycareInvoices        DaycareInvoice[]
+  playgroundConsumptions PlaygroundConsumption[]
+  daycareCapacity        Int                        @default(20)
+  reservationSpaces      ReservationSpace[]
+  reservations           Reservation[]
+  scheduleBlocks         ScheduleBlock[]
+  reservationChecklist   ReservationChecklistItem[]
+  portalCode             String?                    @unique
+  portalEnabled          Boolean                    @default(false)
+  parentAccessCodes      ParentAccessCode[]
+  whatsAppConfig         WhatsAppConfig?
+  whatsAppConversations  WhatsAppConversation[]
+  whatsAppMessages       WhatsAppMessage[]
+  whatsAppOrphanStatuses WhatsAppOrphanStatus[]
+  botConfig              BotConfig?
+  botFaqs                BotFaq[]
+  botServices            BotService[]
+  botUsages              BotUsage[]
+  conversationNotes      ConversationNote[]
+  loyaltyConfig          LoyaltyConfig?
+  loyaltyLedger          LoyaltyLedger[]
+  coupons                Coupon[]
+  couponRedemptions      CouponRedemption[]
+  consentEvents          ConsentEvent[]
+  campaigns              Campaign[]
+  campaignRecipients     CampaignRecipient[]
+  expenses               Expense[]
+  // Tope por gasto para quien no administra (cajero). Céntimos; S/ 100.00 por defecto. Lo cambia el propietario.
+  cashierExpenseLimitCents Int                    @default(10000)
+  sunatConfig            SunatConfig?
+  sunatSeries            SunatSeries[]
+  sunatDocuments         SunatDocument[]
+  subscription           Subscription?
+  saasInvoices           SaasInvoice[]
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  // null solo para SUPERADMIN (contexto administrativo separado)
+  tenantId           String?
+  tenant             Tenant?   @relation(fields: [tenantId], references: [id])
+  email              String    @unique
+  name               String
+  passwordHash       String
+  role               Role
+  mustChangePassword Boolean   @default(true)
+  isActive           Boolean   @default(true)
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+  // Se incrementa para invalidar todas las sesiones del usuario
+  sessionVersion     Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  auditLogs                   AuditLog[]
+  stockMovements              StockMovement[]
+  checkIns                    PlaygroundSession[]  @relation("CheckedInBy")
+  checkOuts                   PlaygroundSession[]  @relation("CheckedOutBy")
+  authorizedPickupsCreated    AuthorizedPickup[]
+  playgroundIncidentsReported PlaygroundIncident[]
+
+  @@index([tenantId])
+}
+
+model Guardian {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  fullName  String
+  dni       String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  children               ChildGuardian[]
+  phoneDigits            String?
+  portalSessionVersion   Int                 @default(0)
+  portalBlocked          Boolean             @default(false)
+  portalLastLoginAt      DateTime?
+  accessCodes            ParentAccessCode[]
+  loyaltyPoints          Int                 @default(0)
+  marketingConsent       Boolean             @default(false)
+  marketingConsentAt     DateTime?
+  marketingConsentSource String?
+  marketingConsentById   String?
+  marketingRevokedAt     DateTime?
+  loyaltyLedger          LoyaltyLedger[]
+  consentEvents          ConsentEvent[]
+  campaignRecipients     CampaignRecipient[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([tenantId, phoneDigits])
+  @@index([tenantId, dni])
+}
+
+model Child {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  fullName      String
+  birthDate     DateTime?
+  allergies     String?
+  medicalAlerts String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  guardians            ChildGuardian[]
+  playgroundSessions   PlaygroundSession[]
+  authorizedPickups    AuthorizedPickup[]
+  playgroundIncidents  PlaygroundIncident[]
+  enrollments          Enrollment[]
+  daycareAttendances   DaycareAttendance[]
+  daycareLogs          DaycareLog[]
+  daycareIncidents     DaycareIncident[]
+  daycareNotifications DaycareNotification[]
+  daycareProfiles      DaycareProfile[]
+  prepaidMinutes       Int                   @default(0)
+  prepaidLedger        PrepaidLedger[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+}
+
+// Las FK compuestas impiden vincular un menor y un apoderado de tenants distintos.
+model ChildGuardian {
+  tenantId           String
+  childId            String
+  guardianId         String
+  relationship       String?
+  canPickup          Boolean  @default(false)
+  isEmergencyContact Boolean  @default(false)
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  child              Child    @relation(fields: [tenantId, childId], references: [tenantId, id])
+  guardian           Guardian @relation(fields: [tenantId, guardianId], references: [tenantId, id])
+
+  @@id([childId, guardianId])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  // Sin datos personales de menores en metadata
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  sku        String?
+  unit       String   @default("unidad")
+  priceCents Int      @default(0)
+  stock      Int      @default(0)
+  minStock   Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  movements    StockMovement[]
+  consumptions PlaygroundConsumption[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+}
+
+// Historial independiente: el stock de Product es un saldo derivado, nunca la única fuente.
+model StockMovement {
+  id          String            @id @default(cuid())
+  tenantId    String
+  productId   String
+  type        StockMovementType
+  quantity    Int
+  stockAfter  Int
+  reason      String?
+  createdById String
+  createdAt   DateTime          @default(now())
+  tenant      Tenant            @relation(fields: [tenantId], references: [id])
+  product     Product           @relation(fields: [tenantId, productId], references: [tenantId, id])
+  createdBy   User              @relation(fields: [createdById], references: [id])
+
+  @@index([tenantId, productId, createdAt])
+}
+
+// Tarifa de ludoteca: paquete de tiempo con precio y costo por minuto excedido.
+model PlaygroundRate {
+  id               String              @id @default(cuid())
+  tenantId         String
+  name             String
+  minutes          Int
+  priceCents       Int
+  extraMinuteCents Int                 @default(0)
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  tenant           Tenant              @relation(fields: [tenantId], references: [id])
+  sessions         PlaygroundSession[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+}
+
+// El tiempo se calcula siempre con checkInAt/checkOutAt persistidos, nunca con un cronómetro del navegador.
+// Un menor y una pulsera solo pueden tener UNA sesión abierta (índices parciales en migración 0002).
+model PlaygroundSession {
+  id                String                  @id @default(cuid())
+  tenantId          String
+  childId           String
+  rateId            String
+  braceletCode      String
+  status            PlaygroundSessionStatus @default(OPEN)
+  checkInAt         DateTime                @default(now())
+  checkOutAt        DateTime?
+  contractedMinutes Int
+  basePriceCents    Int
+  extraMinuteCents  Int
+  amountCents       Int?
+  pickedUpBy        String?
+  // Quién retiró: tipo y id validados en transacción contra apoderados con canPickup o personas autorizadas activas; nombre como copia histórica
+  pickupKind        String?
+  pickupRefId       String?
+  notes             String?
+  checkedInById     String
+  checkedOutById    String?
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id])
+  child             Child                   @relation(fields: [tenantId, childId], references: [tenantId, id])
+  rate              PlaygroundRate          @relation(fields: [tenantId, rateId], references: [tenantId, id])
+  checkedInBy       User                    @relation("CheckedInBy", fields: [checkedInById], references: [id])
+  checkedOutBy      User?                   @relation("CheckedOutBy", fields: [checkedOutById], references: [id])
+  consumptions      PlaygroundConsumption[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, status])
+  @@index([tenantId, checkInAt])
+}
+
+// Lista blanca de personas autorizadas a recoger a un menor (además de apoderados con canPickup).
+model AuthorizedPickup {
+  id           String   @id @default(cuid())
+  tenantId     String
+  childId      String
+  fullName     String
+  dni          String?
+  phone        String?
+  relationship String?
+  isActive     Boolean  @default(true)
+  createdById  String
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  child        Child    @relation(fields: [tenantId, childId], references: [tenantId, id])
+  createdBy    User     @relation(fields: [createdById], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, childId])
+}
+
+model PlaygroundIncident {
+  id           String       @id @default(cuid())
+  tenantId     String
+  childId      String
+  // sesión en curso cuando ocurrió (opcional); se valida en servidor
+  sessionId    String?
+  type         IncidentType
+  description  String
+  reportedById String
+  createdAt    DateTime     @default(now())
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  child        Child        @relation(fields: [tenantId, childId], references: [tenantId, id])
+  reportedBy   User         @relation(fields: [reportedById], references: [id])
+
+  @@index([tenantId, childId, createdAt])
+  @@index([tenantId, sessionId])
+}
+
+// ===== Guardería (independiente de las sesiones de ludoteca) =====
+// Los campos *ById referencian usuarios del mismo tenant (validados desde la sesión; sin FK en BD).
+
+// Matrícula por periodo. Solo una ACTIVE por menor (índice parcial en migración 0004).
+model Enrollment {
+  id              String              @id @default(cuid())
+  tenantId        String
+  childId         String
+  schoolYear      Int
+  startDate       String
+  endDate         String?
+  entryTime       String              @default("08:00")
+  exitTime        String              @default("17:00")
+  monthlyFeeCents Int                 @default(0)
+  status          EnrollmentStatus    @default(ACTIVE)
+  createdById     String
+  createdAt       DateTime            @default(now())
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+  child           Child               @relation(fields: [tenantId, childId], references: [tenantId, id])
+  attendances     DaycareAttendance[]
+  invoices        DaycareInvoice[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, status])
+}
+
+// Fecha local de Perú en formato YYYY-MM-DD; una fila por menor y día.
+model DaycareAttendance {
+  id             String           @id @default(cuid())
+  tenantId       String
+  childId        String
+  enrollmentId   String
+  date           String
+  status         AttendanceStatus
+  checkInAt      DateTime?
+  checkOutAt     DateTime?
+  lateMinutes    Int              @default(0)
+  pickedUpBy     String?
+  pickupKind     String?
+  pickupRefId    String?
+  notes          String?
+  checkedInById  String?
+  checkedOutById String?
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  child          Child            @relation(fields: [tenantId, childId], references: [tenantId, id])
+  enrollment     Enrollment       @relation(fields: [tenantId, enrollmentId], references: [tenantId, id])
+
+  @@unique([tenantId, childId, date])
+  @@index([tenantId, date])
+}
+
+// Registros del Teacher Board. NAP usa occurredAt (inicio) y endedAt (fin).
+model DaycareLog {
+  id               String         @id @default(cuid())
+  tenantId         String
+  childId          String
+  date             String
+  kind             DaycareLogKind
+  subtype          String?
+  level            String?
+  notes            String?
+  visibleToParents Boolean        @default(true)
+  occurredAt       DateTime       @default(now())
+  endedAt          DateTime?
+  recordedById     String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  child            Child          @relation(fields: [tenantId, childId], references: [tenantId, id])
+
+  @@index([tenantId, childId, date])
+  @@index([tenantId, date])
+}
+
+model DaycareIncident {
+  id             String       @id @default(cuid())
+  tenantId       String
+  childId        String
+  date           String
+  type           IncidentType
+  description    String
+  parentNotified Boolean      @default(false)
+  reportedById   String
+  createdAt      DateTime     @default(now())
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  child          Child        @relation(fields: [tenantId, childId], references: [tenantId, id])
+
+  @@index([tenantId, childId, date])
+}
+
+// Novedades para los padres. El portal de padres (Fase 10) las consultará verificando el vínculo menor-apoderado.
+model DaycareNotification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  childId   String
+  logId     String?
+  message   String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  child     Child    @relation(fields: [tenantId, childId], references: [tenantId, id])
+
+  @@index([tenantId, childId, createdAt])
+}
+
+// Ficha infantil / información médica (dato sensible de menores).
+model DaycareProfile {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  childId               String
+  bloodType             String?
+  pediatrician          String?
+  pediatricianPhone     String?
+  insurance             String?
+  medications           String?
+  dietaryNotes          String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  photoConsent          Boolean  @default(false)
+  updatedById           String
+  updatedAt             DateTime @updatedAt
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  child                 Child    @relation(fields: [tenantId, childId], references: [tenantId, id])
+
+  @@unique([tenantId, childId])
+}
+
+// ===== Caja, ventas y cuponeras (Fase 8) =====
+// TODOS los importes son enteros en céntimos (*Cents). Nunca Float/Decimal.
+
+// Turno de caja. Un solo turno OPEN por establecimiento (índice parcial, migración 0005).
+model CashRegisterSession {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  status              CashSessionStatus @default(OPEN)
+  openingBalanceCents Int
+  openedAt            DateTime          @default(now())
+  openedById          String
+  closedAt            DateTime?
+  closedById          String?
+  // Se calculan y guardan al cerrar (dentro de la misma transacción)
+  cashSalesCents      Int?
+  yapePlinSalesCents  Int?
+  cardSalesCents      Int?
+  transferSalesCents  Int?
+  cashRefundsCents    Int               @default(0)
+  // Gastos pagados con el efectivo físico del cajón durante el turno (restan del efectivo esperado)
+  cashExpensesCents   Int               @default(0)
+  expectedCashCents   Int?
+  declaredCashCents   Int?
+  differenceCents     Int?
+  tenant              Tenant            @relation(fields: [tenantId], references: [id])
+  sales               Sale[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, status])
+}
+
+// Venta unificada. El desglose por método vive en la propia fila (CHECK: suma = total) para que
+// se inserte en UNA sola sentencia condicionada a que el turno siga abierto.
+model Sale {
+  id                    String              @id @default(cuid())
+  tenantId              String
+  cashRegisterSessionId String
+  kind                  SaleKind
+  totalCents            Int
+  cashCents             Int                 @default(0)
+  yapePlinCents         Int                 @default(0)
+  cardCents             Int                 @default(0)
+  transferCents         Int                 @default(0)
+  // Referencias validadas en servidor dentro del tenant (sin FK en BD)
+  childId               String?
+  playgroundSessionId   String?
+  idempotencyKey        String?
+  notes                 String?
+  createdById           String
+  createdAt             DateTime            @default(now())
+  tenant                Tenant              @relation(fields: [tenantId], references: [id])
+  session               CashRegisterSession @relation(fields: [tenantId, cashRegisterSessionId], references: [tenantId, id])
+  items                 SaleItem[]
+  reservationId         String?
+  discountCents         Int                 @default(0)
+  couponId              String?
+  pointsRedeemed        Int                 @default(0)
+  pointsEarned          Int                 @default(0)
+  loyaltyGuardianId     String?
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, playgroundSessionId])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, cashRegisterSessionId])
+  @@index([tenantId, createdAt])
+}
+
+model SaleItem {
+  id             String       @id @default(cuid())
+  tenantId       String
+  saleId         String
+  kind           SaleItemKind
+  description    String
+  quantity       Int          @default(1)
+  unitPriceCents Int
+  // Negativo solo para PREPAID_CREDIT (valor del saldo de cuponera aplicado)
+  totalCents     Int
+  productId      String?
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  sale           Sale         @relation(fields: [tenantId, saleId], references: [tenantId, id])
+
+  @@index([tenantId, saleId])
+}
+
+// Paquetes de minutos prepago configurables (p. ej. 300, 600, 1200).
+model PrepaidPackage {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  minutes    Int
+  priceCents Int
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+}
+
+// Historial INMUTABLE (trigger bloquea UPDATE). Child.prepaidMinutes es un saldo derivado: debe igualar la suma del libro.
+model PrepaidLedger {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  childId             String
+  type                PrepaidLedgerType
+  minutes             Int
+  balanceAfter        Int
+  packageId           String?
+  saleId              String?
+  playgroundSessionId String?
+  createdById         String
+  createdAt           DateTime          @default(now())
+  tenant              Tenant            @relation(fields: [tenantId], references: [id])
+  child               Child             @relation(fields: [tenantId, childId], references: [tenantId, id])
+
+  // Una sesión de ludoteca no puede consumir saldo dos veces
+  @@unique([tenantId, playgroundSessionId, type])
+  @@index([tenantId, childId, createdAt])
+}
+
+// Mensualidad de guardería por matrícula y periodo (YYYY-MM).
+model DaycareInvoice {
+  id           String        @id @default(cuid())
+  tenantId     String
+  enrollmentId String
+  childId      String
+  period       String
+  amountCents  Int
+  dueDate      String
+  status       InvoiceStatus @default(PENDING)
+  paidAt       DateTime?
+  saleId       String?
+  createdAt    DateTime      @default(now())
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  enrollment   Enrollment    @relation(fields: [tenantId, enrollmentId], references: [tenantId, id])
+
+  @@unique([tenantId, enrollmentId, period])
+  @@index([tenantId, period, status])
+}
+
+// Consumo de productos durante una sesión de ludoteca (el stock se descuenta al registrarlo; se cobra en la salida).
+model PlaygroundConsumption {
+  id             String            @id @default(cuid())
+  tenantId       String
+  sessionId      String
+  productId      String
+  quantity       Int
+  unitPriceCents Int
+  createdById    String
+  createdAt      DateTime          @default(now())
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  session        PlaygroundSession @relation(fields: [tenantId, sessionId], references: [tenantId, id])
+  product        Product           @relation(fields: [tenantId, productId], references: [tenantId, id])
+
+  @@index([tenantId, sessionId])
+}
+
+// ===== Reservas y calendario (Fase 9) =====
+// Fechas "de día" = YYYY-MM-DD en hora de Lima; horas = HH:MM (comparables como texto).
+
+// Espacio exclusivo (sala de cumpleaños, salón de eventos). Un espacio no admite dos reservas solapadas.
+model ReservationSpace {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  capacity  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+}
+
+// childId, spaceId y reminderSentById son ids validados en servidor dentro del tenant (sin FK en BD).
+// advancePaidCents = total cobrado a cuenta (adelanto + abonos); el saldo es total − pagado.
+model Reservation {
+  id                   String                     @id @default(cuid())
+  tenantId             String
+  serviceType          ReservationService
+  childId              String?
+  spaceId              String?
+  contactName          String
+  contactPhone         String?
+  date                 String
+  startTime            String
+  endTime              String
+  attendees            Int
+  status               ReservationStatus          @default(PENDING)
+  packageName          String?
+  details              String?
+  notes                String?
+  totalAmountCents     Int
+  advanceRequiredCents Int                        @default(0)
+  advancePaidCents     Int                        @default(0)
+  advanceCashSessionId String?
+  reminderSentAt       DateTime?
+  reminderSentById     String?
+  createdById          String
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  tenant               Tenant                     @relation(fields: [tenantId], references: [id])
+  checklist            ReservationChecklistItem[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, date])
+  @@index([tenantId, status])
+}
+
+model ScheduleBlock {
+  id          String   @id @default(cuid())
+  tenantId    String
+  date        String
+  startTime   String
+  endTime     String
+  // null = bloquea todo el local; con valor, solo ese espacio
+  spaceId     String?
+  reason      String
+  createdById String
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, date])
+}
+
+model ReservationChecklistItem {
+  id            String      @id @default(cuid())
+  tenantId      String
+  reservationId String
+  label         String
+  done          Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  reservation   Reservation @relation(fields: [tenantId, reservationId], references: [tenantId, id])
+
+  @@index([tenantId, reservationId])
+}
+
+// ===== Portal de padres (Fase 10) =====
+// El apoderado entra con tenant (código del portal) + DNI o teléfono + código de acceso de un solo uso entregado por el
+// personal. Los códigos se guardan como HMAC (nunca en claro), vencen y se bloquean tras 5 intentos fallidos.
+model ParentAccessCode {
+  id          String    @id @default(cuid())
+  tenantId    String
+  guardianId  String
+  codeHash    String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  attempts    Int       @default(0)
+  createdById String
+  createdAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  guardian    Guardian  @relation(fields: [tenantId, guardianId], references: [tenantId, id])
+
+  @@index([tenantId, guardianId, createdAt])
+}
+
+// Eventos de autenticación para limitar intentos por (código del portal + identificador) y por código del portal.
+// `key` es un hash: no guarda DNI ni teléfonos. Global (sin tenantId) para no revelar si el establecimiento existe.
+model ParentAuthEvent {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
+// ===== WhatsApp Meta Cloud API (Fase 11) =====
+enum WhatsAppDirection {
+  IN
+  OUT
+}
+
+enum WhatsAppMessageType {
+  TEXT
+  TEMPLATE
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  STICKER
+  LOCATION
+  OTHER
+}
+
+// PENDING = guardado antes de enviar; RECEIVED = mensaje entrante. Los estados de entrega solo avanzan (SENT < DELIVERED < READ).
+enum WhatsAppMessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  RECEIVED
+}
+
+// Configuracion por establecimiento. Cada tenant conecta SU numero. Los secretos se guardan CIFRADOS (AES-256-GCM, clave derivada
+// de AUTH_SECRET, con el tenantId y el nombre del campo como datos autenticados): una copia del texto cifrado en otro tenant no descifra.
+model WhatsAppConfig {
+  id                     String    @id @default(cuid())
+  tenantId               String    @unique
+  // Un numero pertenece a un solo establecimiento (enruta el webhook). Solo se habilita tras probar la conexion con el token del tenant.
+  phoneNumberId          String    @unique
+  wabaId                 String
+  accessTokenEnc         String
+  accessTokenLast4       String
+  // Si es null se usa META_APP_SECRET global (app de Meta compartida)
+  appSecretEnc           String?
+  verifyTokenEnc         String
+  verifyTokenHash        String    @unique
+  apiVersion             String?
+  countryCode            String    @default("51")
+  templateLanguage       String    @default("es")
+  tplPortalCode          String?
+  portalCodeTplKind      String    @default("UTILITY")
+  tplReservationReminder String?
+  tplCashAlert           String?
+  ownerAlertPhone        String?
+  enabled                Boolean   @default(false)
+  displayPhoneNumber     String?
+  verifiedName           String?
+  qualityRating          String?
+  lastTestAt             DateTime?
+  lastTestOk             Boolean?
+  lastTestError          String?
+  subscribedAt           DateTime?
+  updatedById            String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model WhatsAppConversation {
+  id               String             @id @default(cuid())
+  tenantId         String
+  waId             String
+  contactName      String?
+  lastInboundAt    DateTime?
+  lastMessageAt    DateTime           @default(now())
+  createdAt        DateTime           @default(now())
+  botEnabled       Boolean            @default(true)
+  status           ConversationStatus @default(OPEN)
+  assignedToId     String?
+  needsHuman       Boolean            @default(false)
+  handoffReason    String?
+  handoffAt        DateTime?
+  botLockedUntil   DateTime?
+  lastBotReplyAt   DateTime?
+  welcomedAt       DateTime?
+  lastOutOfHoursAt DateTime?
+  staffSeenAt      DateTime?
+  notes            ConversationNote[]
+  tenant           Tenant             @relation(fields: [tenantId], references: [id])
+  messages         WhatsAppMessage[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, waId])
+  @@index([tenantId, status, lastMessageAt], map: "WhatsAppConversation_inbox_idx")
+}
+
+// waMessageId unico por tenant: idempotencia ante reintentos de Meta. Los avisos criticos tienen ademas un indice parcial (migracion 0008).
+model WhatsAppMessage {
+  id             String                @id @default(cuid())
+  tenantId       String
+  conversationId String
+  waMessageId    String?
+  direction      WhatsAppDirection
+  type           WhatsAppMessageType
+  status         WhatsAppMessageStatus
+  body           String?
+  templateName   String?
+  mediaId        String?
+  mediaMime      String?
+  errorCode      Int?
+  errorDetail    String?
+  purpose        String?
+  relatedType    String?
+  relatedId      String?
+  sentById       String?
+  createdAt      DateTime              @default(now())
+  statusAt       DateTime?
+  authorKind     WhatsAppAuthor?
+  mediaFilename  String?
+  botHandledAt   DateTime?
+  tenant         Tenant                @relation(fields: [tenantId], references: [id])
+  conversation   WhatsAppConversation  @relation(fields: [tenantId, conversationId], references: [tenantId, id])
+
+  @@unique([tenantId, waMessageId])
+  @@index([tenantId, conversationId, createdAt])
+  @@index([tenantId, conversationId, direction, botHandledAt], map: "WhatsAppMessage_unhandled_idx")
+  @@index([tenantId, purpose, relatedType, relatedId])
+}
+
+// Estados que llegan antes de que se guarde el id del mensaje enviado (carrera envio/webhook); se aplican al guardar el id.
+model WhatsAppOrphanStatus {
+  id          String   @id @default(cuid())
+  tenantId    String
+  waMessageId String
+  status      String
+  errorCode   Int?
+  errorDetail String?
+  at          DateTime
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, waMessageId])
+}
+
+// ===== Chatbot e Inbox (Fase 12) =====
+enum ConversationStatus {
+  OPEN
+  CLOSED
+}
+
+// Quien escribio el mensaje: se muestra claramente en el inbox si respondio el bot o una persona.
+enum WhatsAppAuthor {
+  CUSTOMER
+  BOT
+  AGENT
+  SYSTEM
+}
+
+// Configuracion del bot por establecimiento. El bot SOLO responde con datos reales (herramientas de solo lectura) y nunca confirma reservas.
+model BotConfig {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  enabled            Boolean  @default(false)
+  personality        String   @default("Amable, cercano y breve")
+  instructions       String?
+  welcomeMessage     String?
+  outOfHoursMessage  String?
+  handoffMessage     String   @default("Te comunico con una persona del equipo para ayudarte mejor. En unos minutos te responden.")
+  policies           String?
+  // Horario semanal: [{ "day": 0-6 (0 = lunes), "open": "09:00", "close": "18:00" }]
+  hours              Json     @default("[]")
+  answerOutsideHours Boolean  @default(false)
+  maxRepliesPerHour  Int      @default(20)
+  updatedById        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model BotFaq {
+  id        String   @id @default(cuid())
+  tenantId  String
+  question  String
+  answer    String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, isActive])
+}
+
+// Servicios con precio que no existen como tarifa (p. ej. paquetes de cumpleanos). Las tarifas de ludoteca y las cuponeras se leen de sus tablas.
+model BotService {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  priceCents  Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, isActive])
+}
+
+// Una fila por turno atendido por la IA (agrega todas las llamadas del turno). Cuenta contra el limite mensual del plan.
+model BotUsage {
+  id             String   @id @default(cuid())
+  tenantId       String
+  conversationId String?
+  month          String
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  outcome        String
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, month])
+}
+
+// Notas internas del equipo: NUNCA se envian al cliente (tabla aparte para que no puedan mezclarse con los mensajes).
+model ConversationNote {
+  id             String               @id @default(cuid())
+  tenantId       String
+  conversationId String
+  authorId       String
+  body           String
+  createdAt      DateTime             @default(now())
+  tenant         Tenant               @relation(fields: [tenantId], references: [id])
+  conversation   WhatsAppConversation @relation(fields: [tenantId, conversationId], references: [tenantId, id])
+
+  @@index([tenantId, conversationId, createdAt])
+}
+
+// ===== Marketing y fidelizacion (Fase 13) =====
+// TODOS los importes en centimos. Los puntos son enteros.
+
+// Regla por defecto: 1 punto por cada S/ 1.00 pagado; vencen a los 365 dias (0 = sin vencimiento); 1 punto = S/ 0.10 al canjear.
+model LoyaltyConfig {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  enabled          Boolean  @default(true)
+  pointsPerSol     Int      @default(1)
+  expiryDays       Int      @default(365)
+  centsPerPoint    Int      @default(10)
+  // Tope del canje: porcentaje maximo del total a pagar que puede cubrirse con puntos
+  maxRedeemPercent Int      @default(50)
+  updatedById      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// Libro INMUTABLE (trigger bloquea UPDATE). Guardian.loyaltyPoints es el saldo derivado (CHECK >= 0).
+// Una venta acredita una vez (unico tenant+venta+tipo) y un lote vence una vez (unico tenant+lote+tipo).
+model LoyaltyLedger {
+  id           String           @id @default(cuid())
+  tenantId     String
+  guardianId   String
+  type         LoyaltyEntryType
+  points       Int
+  balanceAfter Int
+  saleId       String?
+  // Para EARN: cuando vencen estos puntos. Para EXPIRE: id del lote (EARN) que vence.
+  expiresAt    DateTime?
+  lotId        String?
+  note         String?
+  createdById  String?
+  createdAt    DateTime         @default(now())
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  guardian     Guardian         @relation(fields: [tenantId, guardianId], references: [tenantId, id])
+
+  @@unique([tenantId, saleId, type])
+  @@unique([tenantId, lotId, type])
+  @@index([tenantId, guardianId, createdAt])
+}
+
+// Solo OWNER y ADMIN crean, editan o desactivan. RECEPTION consulta y aplica en caja.
+model Coupon {
+  id                 String             @id @default(cuid())
+  tenantId           String
+  code               String
+  description        String?
+  type               CouponType
+  // PERCENTAGE: 1-100. FIXED_CENTS: centimos.
+  value              Int
+  validFrom          DateTime?
+  validUntil         DateTime?
+  maxUses            Int?
+  usesCount          Int                @default(0)
+  maxUsesPerGuardian Int?
+  minPurchaseCents   Int                @default(0)
+  isActive           Boolean            @default(true)
+  createdById        String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  redemptions        CouponRedemption[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, id])
+}
+
+model CouponRedemption {
+  id            String   @id @default(cuid())
+  tenantId      String
+  couponId      String
+  saleId        String
+  // Familia que uso el cupon (validada en servidor dentro del tenant, sin FK)
+  guardianId    String?
+  discountCents Int
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  coupon        Coupon   @relation(fields: [tenantId, couponId], references: [tenantId, id])
+
+  // Un cupon por venta
+  @@unique([tenantId, saleId])
+  @@index([tenantId, couponId, guardianId])
+}
+
+// Prueba del consentimiento comercial (Ley 29733): inmutable, una fila por cada otorgamiento o revocacion.
+model ConsentEvent {
+  id           String   @id @default(cuid())
+  tenantId     String
+  guardianId   String
+  granted      Boolean
+  source       String
+  evidence     String?
+  recordedById String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  guardian     Guardian @relation(fields: [tenantId, guardianId], references: [tenantId, id])
+
+  @@index([tenantId, guardianId, createdAt])
+}
+
+model Campaign {
+  id                  String              @id @default(cuid())
+  tenantId            String
+  name                String
+  segment             CampaignSegment
+  // Plantilla APROBADA en Meta (categoria marketing). El texto de la plantilla debe incluir como "Responde BAJA para no recibir mas".
+  templateName        String
+  // Parametro opcional: codigo de cupon que se agrega como ultimo parametro de la plantilla
+  couponCode          String?
+  inactiveDays        Int                 @default(30)
+  prepaidMinutesBelow Int                 @default(60)
+  status              CampaignStatus      @default(DRAFT)
+  createdById         String
+  createdAt           DateTime            @default(now())
+  sentAt              DateTime?
+  tenant              Tenant              @relation(fields: [tenantId], references: [id])
+  recipients          CampaignRecipient[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, status])
+}
+
+model CampaignRecipient {
+  id             String          @id @default(cuid())
+  tenantId       String
+  campaignId     String
+  guardianId     String
+  status         RecipientStatus @default(PENDING)
+  reason         String?
+  // Dato que personaliza el mensaje (p. ej. nombre de pila del menor); no se guardan mas datos del menor
+  childFirstName String?
+  extraValue     String?
+  messageId      String?
+  createdAt      DateTime        @default(now())
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  campaign       Campaign        @relation(fields: [tenantId, campaignId], references: [tenantId, id])
+  guardian       Guardian        @relation(fields: [tenantId, guardianId], references: [tenantId, id])
+
+  // Un apoderado recibe la campana una sola vez
+  @@unique([tenantId, campaignId, guardianId])
+  @@index([tenantId, guardianId, createdAt])
+}
+
+// Gasto/egreso. Si sale del efectivo del cajón (CASH_DRAWER) queda ligado al turno y resta del efectivo esperado;
+// el resto (efectivo fuera de caja, Yape/Plin, tarjeta, transferencia) no toca la caja. Nunca se borra: se anula con motivo.
+// `cashRegisterSessionId` es un id validado en servidor (sin FK en BD) y un CHECK exige que exista si y solo si es CASH_DRAWER.
+model Expense {
+  id                    String          @id @default(cuid())
+  tenantId              String
+  category              ExpenseCategory
+  description           String
+  amountCents           Int
+  source                ExpenseSource
+  cashRegisterSessionId String?
+  // Día contable en hora de Lima (YYYY-MM-DD)
+  expenseDate           String
+  supplier              String?
+  reference             String?
+  idempotencyKey        String?
+  createdById           String
+  createdAt             DateTime        @default(now())
+  voidedAt              DateTime?
+  voidedById            String?
+  voidReason            String?
+  tenant                Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, expenseDate])
+  @@index([tenantId, cashRegisterSessionId])
+}
+
+// ===== Facturación electrónica SUNAT (Fase 15) =====
+enum SunatProvider {
+  MOCK
+  NUBEFACT
+}
+
+enum SunatDocKind {
+  BOLETA
+  FACTURA
+  CREDIT_NOTE
+}
+
+// PENDING = aún no confirmado por el PSE (se reintenta); ACCEPTED/REJECTED = respuesta definitiva de SUNAT; FAILED = reintentos agotados (manual).
+enum SunatDocStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  FAILED
+}
+
+// Configuración del PSE por establecimiento. El token va cifrado (AES-256-GCM, AAD tenantId+campo) y nunca vuelve al navegador.
+model SunatConfig {
+  id                String        @id @default(cuid())
+  tenantId          String        @unique
+  provider          SunatProvider @default(MOCK)
+  sunatApiUrl       String?
+  sunatTokenEnc     String?
+  sunatTokenLast4   String?
+  rucEmisor         String
+  razonSocial       String
+  serieBoleta       String        @default("B001")
+  serieFactura      String        @default("F001")
+  serieNcBoleta     String        @default("BC01")
+  serieNcFactura    String        @default("FC01")
+  // IGV en puntos básicos (1800 = 18%). Los precios del sistema ya incluyen IGV.
+  igvBp             Int           @default(1800)
+  // Emitir boleta automáticamente al cobrar (si el comprador no pidió otro comprobante)
+  autoIssue         Boolean       @default(false)
+  enabled           Boolean       @default(false)
+  lastTestAt        DateTime?
+  lastTestOk        Boolean?
+  lastTestError     String?
+  updatedById       String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  tenant            Tenant        @relation(fields: [tenantId], references: [id])
+}
+
+// Correlativo por serie (sin saltos): se incrementa dentro de la misma transacción que crea el comprobante.
+model SunatSeries {
+  id         String @id @default(cuid())
+  tenantId   String
+  serie      String
+  lastNumber Int    @default(0)
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, serie])
+}
+
+// Comprobante electrónico (boleta, factura o nota de crédito). `saleId` / `creditedDocumentId` son ids validados en servidor.
+model SunatDocument {
+  id                   String         @id @default(cuid())
+  tenantId             String
+  kind                 SunatDocKind
+  status               SunatDocStatus @default(PENDING)
+  provider             SunatProvider
+  serie                String
+  number               Int
+  issueDate            String
+  saleId               String?
+  creditedDocumentId   String?
+  creditNoteReason     String?
+  creditNoteReasonText String?
+  customerDocType      String
+  customerDocNumber    String?
+  customerName         String
+  customerAddress      String?
+  customerEmail        String?
+  igvBp                Int
+  taxableCents         Int
+  igvCents             Int
+  totalCents           Int
+  items                Json
+  attempts             Int            @default(0)
+  nextAttemptAt        DateTime?
+  lockedUntil          DateTime?
+  lastAttemptAt        DateTime?
+  lastError            String?
+  responseCode         String?
+  responseDescription  String?
+  hash                 String?
+  qr                   String?
+  pdfUrl               String?
+  xmlUrl               String?
+  cdrUrl               String?
+  xml                  String?
+  pdf                  Bytes?
+  acceptedAt           DateTime?
+  // En el comprobante original: cuándo fue anulado por una nota de crédito aceptada
+  creditedAt           DateTime?
+  createdById          String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  tenant               Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, serie, number])
+  @@unique([tenantId, saleId])
+  @@unique([tenantId, creditedDocumentId])
+  @@index([tenantId, status, nextAttemptAt])
+  @@index([tenantId, issueDate])
+}
+
+// ===== Suscripciones SaaS (Fase 17) =====
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum SaasInvoiceStatus {
+  PENDING
+  PAID
+  VOID
+}
+
+// Una suscripción por establecimiento con plan de pago. ACTIVE hasta currentPeriodEnd; vencido pasa a PAST_DUE con `graceUntil`;
+// pasada la gracia, el cron suspende el acceso (suspensionSource = BILLING). Un pago reactiva.
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique
+  planId             String
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  graceUntil         DateTime?
+  canceledAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+}
+
+// Cobro de la suscripción (factura del SaaS al establecimiento; NO es un comprobante SUNAT). Un cobro por periodo (único tenantId+periodStart).
+model SaasInvoice {
+  id             String            @id @default(cuid())
+  tenantId       String
+  planId         String
+  planName       String
+  amountCents    Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  dueDate        DateTime
+  status         SaasInvoiceStatus @default(PENDING)
+  // Cómo se pagó: CARD (pasarela), YAPE, PLIN, TRANSFER, OTHER
+  method         String?
+  provider       String?
+  providerRef    String?
+  // Pago manual (Yape/Plin/transferencia) informado por el propietario; lo confirma el SuperAdmin
+  reportedMethod String?
+  reportedRef    String?
+  reportedAt     DateTime?
+  rejectedReason String?
+  paidAt         DateTime?
+  paidById       String?
+  createdAt      DateTime          @default(now())
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, periodStart])
+  @@index([tenantId, status])
+}
+
+// Registro de notificaciones de la pasarela. Único por (provider, eventId): un evento repetido nunca cobra dos veces.
+model PaymentEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventId     String
+  tenantId    String?
+  invoiceId   String?
+  amountCents Int?
+  status      String
+  detail      String?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@unique([provider, eventId])
+}
