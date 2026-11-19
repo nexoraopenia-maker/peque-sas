@@ -13,11 +13,18 @@ export async function changePasswordAction(_p: { error?: string } | undefined, f
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   if (!(await verifyPassword(parsed.data.current, user.passwordHash))) return { error: "Contraseña actual incorrecta" };
 
-  const updated = await db.user.update({
-    where: { id: user.id },
-    data: { passwordHash: await hashPassword(parsed.data.next), mustChangePassword: false, sessionVersion: { increment: 1 } },
-  });
-  await audit({ tenantId: user.tenantId, actorId: user.id, action: "auth.password_change" });
-  await createSession({ uid: updated.id, sv: updated.sessionVersion, sa: updated.role === "SUPERADMIN" && updated.tenantId === null });
+  let updated;
+  try {
+    updated = await db.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(parsed.data.next), mustChangePassword: false, sessionVersion: { increment: 1 } },
+    });
+    await audit({ tenantId: user.tenantId, actorId: user.id, action: "auth.password_change" });
+    await createSession({ uid: updated.id, sv: updated.sessionVersion, sa: updated.role === "SUPERADMIN" && updated.tenantId === null });
+  } catch (err) {
+    // Sin datos sensibles en logs: solo tipo y mensaje del error (visible en Vercel → Logs)
+    console.error("[password] cambio de contraseña falló:", err instanceof Error ? `${err.name}: ${err.message}` : "error desconocido");
+    return { error: "No se pudo cambiar la contraseña. Inténtalo de nuevo; si persiste, contacta a soporte." };
+  }
   redirect(updated.role === "SUPERADMIN" ? "/superadmin/dashboard" : "/dashboard");
 }

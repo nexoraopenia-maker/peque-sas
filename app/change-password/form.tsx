@@ -11,8 +11,8 @@ export function ChangePasswordForm() {
       <Input name="current" type="password" placeholder="Contraseña actual" autoComplete="current-password" required />
       <Input name="next" type="password" placeholder="Nueva contraseña (mín. 10)" autoComplete="new-password" required minLength={10} />
       <Input name="confirm" type="password" placeholder="Confirmar" autoComplete="new-password" required />
-      {s?.error && <p role="alert" className="text-sm text-red-400">{s.error}</p>}
-      <Button disabled={pending}>Guardar</Button>
+      <div aria-live="polite">{s?.error && <p role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-sm text-red-300">{s.error}</p>}</div>
+      <Button disabled={pending}>{pending ? "Guardando…" : "Guardar"}</Button>
     </form>
   );
 }
